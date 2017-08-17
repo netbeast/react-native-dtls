@@ -1,230 +1,211 @@
 
-"use strict";
 
-var should = require( 'chai' ).should();
-var crypto = require( 'crypto' );
+const should = require('chai').should();
+const crypto = require('react-native-crypto');
 
-var BufferReader = require( '../BufferReader' );
-var BufferBuilder = require( '../BufferBuilder' );
+const BufferReader = require('../BufferReader');
+const BufferBuilder = require('../BufferBuilder');
 
-var datatypes = {
-    Int8: 1, UInt8: 1,
-    Int16LE: 2, UInt16LE: 2,
-    Int16BE: 2, UInt16BE: 2,
-    Int32LE: 4, UInt32LE: 4,
-    Int32BE: 4, UInt32BE: 4,
-    FloatLE: 4, DoubleLE: 8,
-    FloatBE: 4, DoubleBE: 8
+const datatypes = {
+  Int8: 1,
+  UInt8: 1,
+  Int16LE: 2,
+  UInt16LE: 2,
+  Int16BE: 2,
+  UInt16BE: 2,
+  Int32LE: 4,
+  UInt32LE: 4,
+  Int32BE: 4,
+  UInt32BE: 4,
+  FloatLE: 4,
+  DoubleLE: 8,
+  FloatBE: 4,
+  DoubleBE: 8,
 };
 
-describe( 'BufferReader', function() {
+describe('BufferReader', () => {
+  Object.keys(datatypes).forEach((dt) => {
+    const method = `read${dt}`;
+    const size = datatypes[dt];
 
-    Object.keys( datatypes ).forEach( function( dt ) {
-        var method = 'read' + dt;
-        var size = datatypes[dt];
+    describe(`#${method}()`, () => {
+      it('should advance offset', () => {
+        const reader = new BufferReader(new Buffer(size));
+        reader[method]();
 
-        describe( '#' + method + '()', function() {
+        reader.offset.should.equal(size);
+      });
 
-            it( 'should advance offset', function() {
-                
-                var reader = new BufferReader( new Buffer( size ) );
-                reader[ method ]();
+      it('should read bytes correctly', () => {
+        const count = 16;
 
-                reader.offset.should.equal( size );
-            });
+        const buffer = crypto.pseudoRandomBytes(size * count);
+        const reader = new BufferReader(buffer);
 
-            it( 'should read bytes correctly', function() {
+        for (let i = 0; i < count; i++) {
+          const actual = reader[method]();
+          const expected = buffer[method](size * i);
 
-                var count = 16;
+          if (!isNaN(expected)) { actual.should.equal(expected); }
+        }
+      });
 
-                var buffer = crypto.pseudoRandomBytes( size * count );
-                var reader = new BufferReader( buffer );
+      it('should consider optional offset', () => {
+        const count = 16;
 
-                for( var i = 0; i < count; i++ ) {
-                    var actual = reader[ method ]();
-                    var expected = buffer[ method ]( size * i );
+        const buffer = crypto.pseudoRandomBytes(size * count);
+        const reader = new BufferReader(buffer);
 
-                    if( !isNaN( expected ) )
-                        actual.should.equal( expected );
-                }
-            });
+        for (let i = 0; i < count; i++) {
+          const actual = reader[method](buffer.length - (size * (i + 1)));
+          const expected = buffer[method](buffer.length - (size * (i + 1)));
 
-            it( 'should consider optional offset', function() {
-
-                var count = 16;
-
-                var buffer = crypto.pseudoRandomBytes( size * count );
-                var reader = new BufferReader( buffer );
-
-                for( var i = 0; i < count; i++ ) {
-                    var actual = reader[ method ]( buffer.length - ( size * (i+1) ));
-                    var expected = buffer[ method ]( buffer.length - ( size * (i+1) ));
-
-                    if( !isNaN( expected ) )
-                        actual.should.equal( expected );
-                }
-            });
-        });
+          if (!isNaN(expected)) { actual.should.equal(expected); }
+        }
+      });
     });
+  });
 
-    describe( '#readUInt24BE()', function() {
+  describe('#readUInt24BE()', () => {
+    it('should write bytes correctly', () => {
+      const builder = new BufferBuilder();
+      const value = Math.floor(Math.random() * 0xffffff);
+      builder.writeUInt24BE(value);
 
-        it( 'should write bytes correctly', function() {
+      const reader = new BufferReader(builder.getBuffer());
+      const actual = reader.readUInt24BE();
 
-            var builder = new BufferBuilder();
-            var value = Math.floor( Math.random() * 0xffffff );
-            builder.writeUInt24BE( value );
-
-            var reader = new BufferReader( builder.getBuffer() );
-            var actual = reader.readUInt24BE();
-
-            actual.should.equal( value );
-        });
+      actual.should.equal(value);
     });
+  });
 
-    describe( '#readUInt24LE()', function() {
+  describe('#readUInt24LE()', () => {
+    it('should write bytes correctly', () => {
+      const builder = new BufferBuilder();
+      const value = Math.floor(Math.random() * 0xffffff);
+      builder.writeUInt24LE(value);
 
-        it( 'should write bytes correctly', function() {
+      const reader = new BufferReader(builder.getBuffer());
+      const actual = reader.readUInt24LE();
 
-            var builder = new BufferBuilder();
-            var value = Math.floor( Math.random() * 0xffffff );
-            builder.writeUInt24LE( value );
-
-            var reader = new BufferReader( builder.getBuffer() );
-            var actual = reader.readUInt24LE();
-
-            actual.should.equal( value );
-        });
+      actual.should.equal(value);
     });
+  });
 
-    describe( '#readBytes()', function() {
+  describe('#readBytes()', () => {
+    it('should read bytes correctly', () => {
+      const value = crypto.pseudoRandomBytes(64);
 
-        it( 'should read bytes correctly', function() {
-            var value = crypto.pseudoRandomBytes( 64 );
+      const reader = new BufferReader(value);
 
-            var reader = new BufferReader( value );
+      for (let i = 0; i < 64; i += 16) {
+        const actual = reader.readBytes(16);
+        const expected = value.slice(i, i + 16);
 
-            for( var i = 0; i < 64; i += 16 ) {
-
-                var actual = reader.readBytes( 16 );
-                var expected = value.slice( i, i + 16 );
-
-                actual.should.deep.equal( expected );
-            }
-        });
+        actual.should.deep.equal(expected);
+      }
     });
+  });
 
-    describe( '#seek()', function() {
+  describe('#seek()', () => {
+    it('should change position in buffer', () => {
+      const buffer = new Buffer([0x10, 0x20, 0x30, 0x40]);
+      const reader = new BufferReader(buffer);
 
-        it( 'should change position in buffer', function() {
+      reader.readInt8().should.equal(0x10);
 
-            var buffer = new Buffer( [ 0x10, 0x20, 0x30, 0x40 ] );
-            var reader = new BufferReader( buffer );
+      reader.seek(2);
+      reader.readInt8().should.equal(0x30);
 
-            reader.readInt8().should.equal( 0x10 );
-
-            reader.seek( 2 );
-            reader.readInt8().should.equal( 0x30 );
-
-            reader.seek( 1 );
-            reader.readInt8().should.equal( 0x20 );
-        });
+      reader.seek(1);
+      reader.readInt8().should.equal(0x20);
     });
+  });
 });
 
-describe( 'BufferBuilder', function() {
+describe('BufferBuilder', () => {
+  Object.keys(datatypes).forEach((dt) => {
+    const method = `write${dt}`;
+    const size = datatypes[dt];
 
-    Object.keys( datatypes ).forEach( function( dt ) {
-        var method = 'write' + dt;
-        var size = datatypes[dt];
+    describe(`#${method}()`, () => {
+      it('should write bytes correctly', () => {
+        const count = 16;
 
-        describe( '#' + method + '()', function() {
+        const builder = new BufferBuilder();
+        const buffer = new Buffer(size * count);
 
-            it( 'should write bytes correctly', function() {
+        for (let i = 0; i < count; i++) {
+          const value = Math.random();
 
-                var count = 16;
+          builder[method](value);
+          buffer[method](value, i * size);
+        }
 
-                var builder = new BufferBuilder();
-                var buffer = new Buffer( size * count );
-
-                for( var i = 0; i < count; i++ ) {
-                    var value = Math.random();
-
-                    builder[method]( value );
-                    buffer[method]( value, i * size );
-                }
-
-                var actual = builder.getBuffer();
-                actual.should.deep.equal( buffer );
-            });
-        });
+        const actual = builder.getBuffer();
+        actual.should.deep.equal(buffer);
+      });
     });
+  });
 
-    describe( '#writeUInt24BE()', function() {
+  describe('#writeUInt24BE()', () => {
+    it('should write bytes correctly', () => {
+      const count = 16;
+      const size = 3;
 
-        it( 'should write bytes correctly', function() {
-            var count = 16;
-            var size = 3;
+      const builder = new BufferBuilder();
+      const buffer = new Buffer(3 * count);
 
-            var builder = new BufferBuilder();
-            var buffer = new Buffer( 3 * count );
+      for (let i = 0; i < count; i++) {
+        const value = Math.floor(Math.random() * 0xffffff);
 
-            for( var i = 0; i < count; i++ ) {
-                var value = Math.floor( Math.random() * 0xffffff );
+        builder.writeUInt24BE(value);
+        buffer.writeUInt8((value & 0xff0000) >> 16, i * size);
+        buffer.writeUInt16BE(value & 0xffff, i * size + 1);
+      }
 
-                builder.writeUInt24BE( value );
-                buffer.writeUInt8( ( value & 0xff0000 ) >> 16, i * size );
-                buffer.writeUInt16BE( value & 0xffff, i * size + 1 );
-            }
-
-            var actual = builder.getBuffer();
-            buffer.should.deep.equal( actual );
-        });
+      const actual = builder.getBuffer();
+      buffer.should.deep.equal(actual);
     });
+  });
 
-    describe( '#writeUInt24LE()', function() {
+  describe('#writeUInt24LE()', () => {
+    it('should write bytes correctly', () => {
+      const count = 16;
+      const size = 3;
 
-        it( 'should write bytes correctly', function() {
-            var count = 16;
-            var size = 3;
+      const builder = new BufferBuilder();
+      const buffer = new Buffer(size * count);
 
-            var builder = new BufferBuilder();
-            var buffer = new Buffer( size * count );
+      for (let i = 0; i < count; i++) {
+        const value = Math.floor(Math.random() * 0xffffff);
 
-            for( var i = 0; i < count; i++ ) {
-                var value = Math.floor( Math.random() * 0xffffff );
+        builder.writeUInt24LE(value);
+        buffer.writeUInt8(value & 0xff, i * size);
+        buffer.writeUInt16LE((value & 0xffff00) >> 8, i * size + 1);
+      }
 
-                builder.writeUInt24LE( value );
-                buffer.writeUInt8( value & 0xff, i * size );
-                buffer.writeUInt16LE( ( value & 0xffff00 ) >> 8, i * size + 1 );
-            }
-
-            var actual = builder.getBuffer();
-            buffer.should.deep.equal( actual );
-        });
+      const actual = builder.getBuffer();
+      buffer.should.deep.equal(actual);
     });
+  });
 
-    describe( '#writeBytes()', function() {
+  describe('#writeBytes()', () => {
+    it('should write bytes correctly', () => {
+      const count = 16;
+      const size = 8;
 
-        it( 'should write bytes correctly', function() {
+      const builder = new BufferBuilder();
+      const buffer = new Buffer(size * count);
 
-            var count = 16;
-            var size = 8;
-            
-            var builder = new BufferBuilder();
-            var buffer = new Buffer( size * count );
+      for (let i = 0; i < count; i++) {
+        const value = crypto.pseudoRandomBytes(size);
+        builder.writeBytes(value);
+        value.copy(buffer, i * size);
+      }
 
-            for( var i = 0; i < count; i++ ) {
-
-                var value = crypto.pseudoRandomBytes( size );
-                builder.writeBytes( value );
-                value.copy( buffer, i * size );
-            }
-
-            var actual = builder.getBuffer();
-            buffer.should.deep.equal( actual );
-            
-        });
+      const actual = builder.getBuffer();
+      buffer.should.deep.equal(actual);
     });
-
+  });
 });

@@ -22,7 +22,7 @@ against well known TLS attacks.
 
 ```javascript
 var dtls = require( 'dtls' );
-var fs = require( 'fs' );
+var fs = require( 'react-native-level-fs' );
 
 var pem = fs.readFileSync( 'server.pem' );
 
@@ -106,7 +106,7 @@ Mimics the Node.js [tls.createServer](https://nodejs.org/api/tls.html#tls_tls_cr
 
 ```javascript
 var dtls = require( 'dtls' );
-var fs = require( 'fs' );
+var fs = require( 'react-native-level-fs' );
     
 var pem = fs.readFileSync( 'server.pem' );
     
